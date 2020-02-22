@@ -1,0 +1,25 @@
+diff --git a/Makefile b/Makefile
+index 30d58d6a..9eaf70f5 100644
+--- a/Makefile
++++ b/Makefile
+@@ -29,8 +29,7 @@ build-binaries:
+ 		-ldflags "$(LDFLAGS)" -osarch="linux/arm"
+ 
+ build-arm:
+-	cd cmd/keel && env GOARCH=arm GOOS=linux go build -ldflags="$(ARMFLAGS)" -o release/keel-linux-arm
+-	cd cmd/keel && env GOARCH=arm64 GOOS=linux go build -ldflags="$(ARMFLAGS)" -o release/keel-linux-aarc64
++	cd cmd/keel && env CC=arm-linux-gnueabihf-gcc CGO_ENABLED=1 GOARCH=arm GOARM=7 GOOS=linux go build -ldflags="$(ARMFLAGS)" -o release/keel-linux-arm
+ 
+ armhf-latest:
+ 	docker build -t keelhq/keel-arm:latest -f Dockerfile.armhf .
+@@ -41,8 +40,8 @@ aarch64-latest:
+ 	docker push keelhq/keel-aarch64:latest
+ 
+ armhf:
+-	docker build -t keelhq/keel-arm:$(VERSION) -f Dockerfile.armhf .
+-	docker push keelhq/keel-arm:$(VERSION)
++	docker build -t reireias/keel-arm:$(VERSION) -f Dockerfile.armhf .
++	docker push reireias/keel-arm:$(VERSION)
+ 
+ aarch64:
+ 	docker build -t keelhq/keel-aarch64:$(VERSION) -f Dockerfile.aarch64 .

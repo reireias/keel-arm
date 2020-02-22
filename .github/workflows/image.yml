@@ -1,0 +1,58 @@
+name: image
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+env:
+  REPO: keel-hq/keel
+  IMAGE: reireias/keel-arm
+  GOPATH: /home/runner/work/keel-arm/keel-arm/go
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: move build files
+        run: |
+          mv arm.patch /tmp
+          mv Dockerfile /tmp
+
+      - uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: install packages
+        run: >
+          sudo apt install -y
+          gcc-arm-linux-gnueabihf
+          && ls /usr/bin/arm-linux-gnueabihf-gcc
+
+      - name: get recent tag
+        id: recent-tag
+        run: echo "##[set-output name=tag;]$(curl -s https://api.github.com/repos/${REPO}/tags | jq -crM '.[0].name')"
+
+      - name: get recent sha
+        id: recent-sha
+        run: echo "##[set-output name=sha;]$(curl -s https://api.github.com/repos/${REPO}/tags | jq -crM '.[0].commit.sha')"
+
+      - uses: actions/checkout@v2
+        with:
+          repository: ${{ env.REPO }}
+          ref: ${{ steps.recent-sha.outputs.sha }}
+          path: /home/runner/work/keel-arm/keel-arm/go/src/github.com/${{ env.REPO }}
+
+      # image build when tag not found in docker hub
+      - name: image build
+        run: >
+          curl -s https://registry.hub.docker.com/v2/repositories/${IMAGE}/tags/
+          | jq -crM '.results[].name'
+          | grep -q ${{ steps.recent-tag.outputs.tag }}
+          || docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASS }}
+          && cd ${GOPATH}/src/github.com/${{ env.REPO }}
+          && patch -p1 < /tmp/arm.patch
+          && cp /tmp/Dockerfile ./Dockerfile.armhf
+          && make build-arm fetch-certs
+          && VERSION=${{ steps.recent-tag.outputs.tag }} make armhf
